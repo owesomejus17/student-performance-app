@@ -1,13 +1,13 @@
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LinearRegression
 
 st.set_page_config(page_title="Student Performance App", layout="wide")
 
-st.title("🎓 Student Performance Prediction App")
+st.markdown("<h1 style='text-align: center; color: #4B0082;'>🎓 Student Performance Prediction App</h1>", unsafe_allow_html=True)
+st.markdown("---")
 
 # Load dataset
 @st.cache_data
@@ -19,48 +19,18 @@ def load_data():
 data = load_data()
 
 # Sidebar Navigation
-page = st.sidebar.radio("Navigation", ["Data Overview", "Charts", "Predict Score"])
-
+page = st.sidebar.radio("Navigation", ["Data Overview", "Predict Score"])
 
 # -------------------- PAGE 1 - DATA -----------------------
 if page == "Data Overview":
     st.header("📄 Dataset Preview")
-    st.write(data.head())
+    st.dataframe(data.head())
 
-    st.write("### Summary Statistics")
-    st.write(data.describe())
-
-
-# -------------------- PAGE 2 - CHARTS -----------------------
-elif page == "Charts":
-    st.header("📊 Data Visualization")
-
-    # 1. Score Distribution
-    st.subheader("Distribution of Average Scores")
-    fig, ax = plt.subplots()
-    sns.histplot(data['average_score'], kde=True, ax=ax)
-    st.pyplot(fig)
-
-    # 2. Gender vs Performance
-    st.subheader("Average Score by Gender")
-    gender_mean = data.groupby("gender")["average_score"].mean()
-
-    fig, ax = plt.subplots()
-    gender_mean.plot(kind="bar", ax=ax)
-    st.pyplot(fig)
-
-    # 3. Correlation Heatmap
-    st.subheader("Correlation Heatmap")
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.heatmap(data.corr(), annot=True, cmap="coolwarm", ax=ax)
-    st.pyplot(fig)
-
-
-# -------------------- PAGE 3 - PREDICTION -----------------------
+# -------------------- PAGE 2 - PREDICTION -----------------------
 elif page == "Predict Score":
     st.header("🎯 Predict Student Final Score")
 
-    # Convert categorical data
+    # Encode categorical data
     data_encoded = pd.get_dummies(data, drop_first=True)
     X = data_encoded.drop("average_score", axis=1)
     y = data_encoded["average_score"]
@@ -70,9 +40,10 @@ elif page == "Predict Score":
     # Train model
     model = LinearRegression()
     model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
 
-    st.write("### Enter Student Details")
-
+    # Input section
+    st.subheader("Enter Student Details")
     gender = st.selectbox("Gender", ["female", "male"])
     race = st.selectbox("Race/Ethnicity", ["group A", "group B", "group C", "group D", "group E"])
     parent_edu = st.selectbox(
@@ -86,7 +57,7 @@ elif page == "Predict Score":
     reading = st.number_input("Reading Score", 0, 100, 50)
     writing = st.number_input("Writing Score", 0, 100, 50)
 
-    # Create input df
+    # Create input dataframe
     input_data = pd.DataFrame({
         "math score": [math],
         "reading score": [reading],
@@ -104,9 +75,18 @@ elif page == "Predict Score":
         "lunch_standard": [1 if lunch == "standard" else 0],
         "test preparation course_completed": [1 if prep == "completed" else 0],
     })
-
     input_data = input_data.reindex(columns=X.columns, fill_value=0)
 
     if st.button("Predict"):
         prediction = model.predict(input_data)[0]
         st.success(f"📘 Predicted Final Score: {prediction:.2f} / 100")
+
+        # Plot actual vs predicted scores
+        st.subheader("📊 Actual vs Predicted Scores")
+        fig, ax = plt.subplots(figsize=(8, 5))
+        ax.scatter(y_test, y_pred, color="#4B0082", alpha=0.7)
+        ax.plot([0, 100], [0, 100], '--', color='gray')  # diagonal line
+        ax.set_xlabel("Actual Average Score")
+        ax.set_ylabel("Predicted Average Score")
+        ax.set_title("Actual vs Predicted Scores")
+        st.pyplot(fig)
